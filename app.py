@@ -328,6 +328,7 @@ def place_bid(current_user, item_id):
     data = request.get_json()
     
     try:
+        # Connect to MySQL database
         conn = pymysql.connect(
             host=app.config['MYSQL_HOST'],
             user=app.config['MYSQL_USER'],
@@ -335,8 +336,21 @@ def place_bid(current_user, item_id):
             database=app.config['MYSQL_DB']
         )
         cur = conn.cursor()
-        cur.execute("INSERT INTO bids (item_id, bidder_id, bid_amount, timestamp) VALUES (%s, %s, %s, NOW())",
-                    (item_id, current_user, data['bid_amount']))
+
+        # Fetch the item details to get the item name and seller_id
+        cur.execute("SELECT title, seller_id FROM items WHERE id = %s", (item_id,))
+        item = cur.fetchone()
+
+        if not item:
+            return jsonify({'message': 'Item not found'}), 404  # Item does not exist
+
+        item_name = item[0]  # Assuming title is at index 0
+        seller_id = item[1]  # Assuming seller_id is at index 1
+
+        # Insert the bid into the bids table, including user_id
+        cur.execute("INSERT INTO bids (item_id, item_name, seller_id, user_id, bid_amount, timestamp) VALUES (%s, %s, %s, %s, %s, NOW())",
+                    (item_id, item_name, seller_id, current_user[0], data['bid_amount']))  # current_user[0] is the user_id
+        
         conn.commit()
         cur.close()
         conn.close()
@@ -637,6 +651,127 @@ def get_item_by_id(item_id):
             return jsonify({'message': 'Item not found'}), 404  # Item not found
     except Exception as e:
         return jsonify({'message': 'Failed to fetch item', 'error': str(e)}), 500
+
+# Admin endpoint to update the start and end time for a bid
+@app.route('/admin/update-bid-time/<item_id>', methods=['PUT'])
+@token_required  # Ensure the user is authenticated
+def update_bid_time(current_user, item_id):
+    # Check if the current user is an admin
+    if current_user[4] != 'admin':  # Assuming role is at index 4
+        return jsonify({'message': 'Access denied. Admins only.'}), 403
+
+    data = request.get_json()
+    
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
+
+    # Validate required fields
+    if not start_time or not end_time:
+        return jsonify({'message': 'Start time and end time are required.'}), 400
+
+    # Validate that end_time is after start_time
+    if start_time >= end_time:
+        return jsonify({'message': 'End time must be after start time.'}), 400
+
+    try:
+        # Connect to MySQL database
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor()
+
+        # Update the bidding_table with the new start and end times
+        cur.execute("""
+            UPDATE bidding_table
+            SET start_time = %s, end_time = %s
+            WHERE item_id = %s
+        """, (start_time, end_time, item_id))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({'message': 'Bid times updated successfully.'}), 200
+
+    except Exception as e:
+        return jsonify({'message': 'Failed to update bid times', 'error': str(e)}), 500
+
+# Admin endpoint to add a bidding session for an item
+@app.route('/admin/add-bid', methods=['POST'])
+@token_required  # Ensure the user is authenticated
+def add_bid(current_user):
+    # Check if the current user is an admin
+    if current_user[4] != 'admin':  # Assuming role is at index 4
+        return jsonify({'message': 'Access denied. Admins only.'}), 403
+
+    data = request.get_json()
+    
+    item_id = data.get('item_id')
+    start_time = data.get('start_time')
+    end_time = data.get('end_time')
+
+    # Validate required fields
+    if not item_id or not start_time or not end_time:
+        return jsonify({'message': 'Item ID, start time, and end time are required.'}), 400
+
+    # Validate that end_time is after start_time
+    if start_time >= end_time:
+        return jsonify({'message': 'End time must be after start time.'}), 400
+
+    try:
+        # Connect to MySQL database
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor()
+
+        # Insert the new bidding session into the bidding_table
+        cur.execute("""
+            INSERT INTO bidding_table (item_id, start_time, end_time)
+            VALUES (%s, %s, %s)
+        """, (item_id, start_time, end_time))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        return jsonify({'message': 'Bidding session added successfully.'}), 201
+
+    except Exception as e:
+        return jsonify({'message': 'Failed to add bidding session', 'error': str(e)}), 500
+
+# Endpoint to fetch bidding session details based on item_id
+@app.route('/bidding/<item_id>', methods=['GET'])
+def get_bidding_details(item_id):
+    try:
+        # Connect to MySQL database
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor(pymysql.cursors.DictCursor)  # Use DictCursor to return dictionaries
+
+        # Fetch bidding session details for the given item_id
+        cur.execute("SELECT * FROM bidding_table WHERE item_id = %s", (item_id,))
+        bidding_details = cur.fetchall()  # Fetch all bidding sessions for the item
+
+        cur.close()
+        conn.close()
+
+        if bidding_details:
+            return jsonify(bidding_details), 200  # Return the bidding session details
+        else:
+            return jsonify({'message': 'No bidding sessions found for this item.'}), 404  # No sessions found
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch bidding details', 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
