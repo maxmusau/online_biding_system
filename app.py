@@ -615,5 +615,28 @@ def get_all_active_bids():
     except Exception as e:
         return jsonify({'message': 'Failed to fetch all active bids', 'error': str(e)}), 500
 
+# Endpoint to fetch details of a single item based on item_id
+@app.route('/single-item/<item_id>', methods=['GET'])
+def get_item_by_id(item_id):
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor(pymysql.cursors.DictCursor)  # Use DictCursor to return dictionaries
+        cur.execute("SELECT * FROM items WHERE id = %s", (item_id,))  # Fetch item for the given item_id
+        item = cur.fetchone()  # Fetch a single item
+        cur.close()
+        conn.close()
+        
+        if item:
+            return jsonify(item), 200  # Return the item details
+        else:
+            return jsonify({'message': 'Item not found'}), 404  # Item not found
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch item', 'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=True)
