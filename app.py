@@ -27,6 +27,10 @@ app.config['SECRET_KEY'] = 'LFKSJDWIE($%*$&#@$&#@53498ikdfhnksdjf4i3o)'  # Chang
 # Add this line to set the path for the static folder
 STATIC_FOLDER = os.path.join(os.getcwd(), 'static')
 
+# Define MEDIA_FOLDER at the top of your app.py
+MEDIA_FOLDER = os.path.join(os.getcwd(), "static")  # Use the static folder for images
+os.makedirs(MEDIA_FOLDER, exist_ok=True)  # Create if it doesn't exist
+
 #main route
 @app.route("/")
 def Main():
@@ -189,93 +193,6 @@ def get_all_items():
         return jsonify({'message': 'Failed to fetch items', 'error': str(e)}), 500
 
 # Add a new item (seller only)
-# @app.route('/add-items', methods=['POST'])
-# def add_item():
-#     data = request.form  # Use request.form to handle form data
-#     image_file = request.files['image']  # Get the uploaded image file
-
-#     # Generate a unique ID for the item
-#     new_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-
-#     # Save the image file to the static folder
-#     if image_file:
-#         image_filename = f"{new_id}_{image_file.filename}"  # Create a unique filename
-#         image_path = os.path.join(STATIC_FOLDER, image_filename)
-#         image_file.save(image_path)  # Save the file
-
-#     try:
-#         conn = pymysql.connect(
-#             host=app.config['MYSQL_HOST'],
-#             user=app.config['MYSQL_USER'],
-#             password=app.config['MYSQL_PASSWORD'],
-#             database=app.config['MYSQL_DB']
-#         )
-#         cur = conn.cursor()
-        
-#         # Insert the new item into the items table
-#         cur.execute("""
-#             INSERT INTO items (id, title, description, image, base_price, seller_id, end_time)
-#             VALUES (%s, %s, %s, %s, %s, %s, NOW() + INTERVAL 30 MINUTE)
-#         """, (new_id, data['title'], data['description'], image_filename, data['base_price'], data['seller_id']))
-        
-#         conn.commit()
-#         cur.close()
-#         conn.close()
-#         return jsonify({'message': 'Item added successfully'}), 201
-#     except Exception as e:
-#         print(f"Error occurred: {str(e)}")  # Print the error for debugging
-#         return jsonify({'message': 'Failed to add item', 'error': str(e)}), 500
-
-MEDIA_FOLDER = os.path.join(os.getcwd(), "media", "images")
-os.makedirs(MEDIA_FOLDER, exist_ok=True)  # Create if it doesn't exist
-
-# @app.route('/add-items', methods=['POST'])
-# def add_item():
-#     try:
-#         data = request.form  # Use request.form to handle form data
-#         image_file = request.files.get('image')  # Get the uploaded image file
-
-#         # Generate a unique ID for the item
-#         new_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
-
-#         # Save the image file to the media folder
-#         if image_file:
-#             image_filename = f"{new_id}_{secure_filename(image_file.filename)}"
-#             image_path = os.path.join(MEDIA_FOLDER, image_filename)
-#             image_file.save(image_path)  # Save the file
-#         else:
-#             image_filename = None  # No image uploaded
-
-#         # Connect to MySQL database
-#         conn = pymysql.connect(
-#             host=app.config['MYSQL_HOST'],
-#             user=app.config['MYSQL_USER'],
-#             password=app.config['MYSQL_PASSWORD'],
-#             database=app.config['MYSQL_DB']
-#         )
-#         cur = conn.cursor()
-
-#         # Insert the new item into the database
-#         cur.execute("""
-#             INSERT INTO items (id, title, description, image, base_price, seller_id, end_time)
-#             VALUES (%s, %s, %s, %s, %s, %s, NOW() + INTERVAL 30 MINUTE)
-#         """, (new_id, data['title'], data['description'], image_filename, data['base_price'], data['seller_id']))
-
-#         conn.commit()
-#         cur.close()
-#         conn.close()
-
-#         return jsonify({'message': 'Item added successfully'}), 201
-
-#     except Exception as e:
-#         print(f"Error occurred: {str(e)}")  # Debugging
-#         return jsonify({'message': 'Failed to add item', 'error': str(e)}), 500
-
-
-
-
-
-# new code
 @app.route('/add-items', methods=['POST'])
 def add_item():
     try:
@@ -298,10 +215,10 @@ def add_item():
         # Generate a unique ID for the item
         new_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
 
-        # Save the image file to the media folder
+        # Save the image file to the MEDIA_FOLDER
         if image_file:
             image_filename = f"{new_id}_{secure_filename(image_file.filename)}"
-            image_path = os.path.join(app.config['MEDIA_FOLDER'], image_filename)
+            image_path = os.path.join(MEDIA_FOLDER, image_filename)
             image_file.save(image_path)  # Save the file
         else:
             image_filename = None  # No image uploaded
@@ -318,7 +235,7 @@ def add_item():
 
         # Insert the new item into the database
         cur.execute("""
-            INSERT INTO items (item_id, title, description, image, base_price, seller_id, end_time)
+            INSERT INTO items (id, title, description, image, base_price, seller_id, end_time)
             VALUES (%s, %s, %s, %s, %s, %s, NOW() + INTERVAL 30 MINUTE)
         """, (new_id, title, description, image_filename, base_price, seller_id))
 
@@ -338,10 +255,10 @@ def add_item():
 
 
 @app.route('/bid/<item_id>', methods=['POST'])
-# @token_required
+@token_required  # Ensure the user is authenticated
 def place_bid(current_user, item_id):
     data = request.get_json()
-    #... (Input validation here)...
+    
     try:
         conn = pymysql.connect(
             host=app.config['MYSQL_HOST'],
@@ -350,7 +267,7 @@ def place_bid(current_user, item_id):
             database=app.config['MYSQL_DB']
         )
         cur = conn.cursor()
-        cur.execute("INSERT INTO bids (item_id, bidder_id,title, bid_amount, timestamp) VALUES (%s, %s, %s, NOW())",
+        cur.execute("INSERT INTO bids (item_id, bidder_id, bid_amount, timestamp) VALUES (%s, %s, %s, NOW())",
                     (item_id, current_user, data['bid_amount']))
         conn.commit()
         cur.close()
@@ -439,6 +356,196 @@ def add_seller():
         return jsonify({'message': 'Seller added successfully', 'seller_id': seller_id}), 201
     except Exception as e:
         return jsonify({'message': 'Failed to add seller', 'error': str(e)}), 500
+
+# Endpoint to fetch users with role "user"
+@app.route('/users', methods=['GET'])
+def get_users():
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users WHERE role = 'user'")  # Fetch users with role 'user'
+        users = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Convert the result to a list of dictionaries for better readability
+        user_list = []
+        for user in users:
+            user_list.append({
+                'id': user[0],
+                'username': user[1],
+                'email': user[2],
+                'role': user[4]  # Assuming role is at index 4
+            })
+        
+        return jsonify(user_list), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch users', 'error': str(e)}), 500
+
+# Endpoint to fetch all sellers
+@app.route('/sellers', methods=['GET'])
+def get_sellers():
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM sellers")  # Fetch all sellers
+        sellers = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Convert the result to a list of dictionaries for better readability
+        seller_list = []
+        for seller in sellers:
+            seller_list.append({
+                'seller_id': seller[0],
+                'username': seller[1],
+                'email': seller[2],
+                'phone': seller[4],  # Assuming phone is at index 4
+                'address': seller[5],  # Assuming address is at index 5
+                'role': seller[6]  # Assuming role is at index 6
+            })
+        
+        return jsonify(seller_list), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch sellers', 'error': str(e)}), 500
+
+# Endpoint to fetch items based on seller_id
+@app.route('/items/<seller_id>', methods=['GET'])
+def get_items_by_seller(seller_id):
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM items WHERE seller_id = %s", (seller_id,))  # Fetch items for the given seller_id
+        items = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Convert the result to a list of dictionaries for better readability
+        item_list = []
+        for item in items:
+            item_list.append({
+                'id': item[0],
+                'title': item[1],
+                'description': item[2],
+                'image': item[3],
+                'base_price': item[4],
+                'seller_id': item[5],
+                'end_time': item[6]
+            })
+        
+        return jsonify(item_list), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch items', 'error': str(e)}), 500
+
+# Fetch won bids
+@app.route('/won-bids', methods=['GET'])
+def get_won_bids():
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor()
+        # Fetch the highest bid for each item where the auction has ended
+        cur.execute("""
+            SELECT item_id, bidder_id, MAX(bid_amount) AS winning_bid
+            FROM bids
+            WHERE item_id IN (SELECT id FROM items WHERE end_time < NOW())
+            GROUP BY item_id
+        """)
+        won_bids = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Convert the result to a list of dictionaries for better readability
+        won_bid_list = []
+        for bid in won_bids:
+            won_bid_list.append({
+                'item_id': bid[0],
+                'winner_id': bid[1],
+                'winning_bid': bid[2]
+            })
+        
+        return jsonify(won_bid_list), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch won bids', 'error': str(e)}), 500
+
+# Fetch active bids based on item_id
+@app.route('/active-bids/<item_id>', methods=['GET'])
+def get_active_bids(item_id):
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM bids WHERE item_id = %s AND timestamp < NOW()", (item_id,))
+        active_bids = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Convert the result to a list of dictionaries for better readability
+        active_bid_list = []
+        for bid in active_bids:
+            active_bid_list.append({
+                'item_id': bid[0],
+                'bidder_id': bid[1],
+                'bid_amount': bid[2],
+                'timestamp': bid[3]
+            })
+        
+        return jsonify(active_bid_list), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch active bids', 'error': str(e)}), 500
+
+# Fetch all active bids
+@app.route('/active-bids', methods=['GET'])
+def get_all_active_bids():
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM bids WHERE timestamp < NOW()")  # Fetch all active bids
+        active_bids = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Convert the result to a list of dictionaries for better readability
+        active_bid_list = []
+        for bid in active_bids:
+            active_bid_list.append({
+                'item_id': bid[0],
+                'bidder_id': bid[1],
+                'bid_amount': bid[2],
+                'timestamp': bid[3]
+            })
+        
+        return jsonify(active_bid_list), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch all active bids', 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
