@@ -16,16 +16,16 @@ CORS(app)  # Enable CORS for the entire application
 
 # connection=pymysql.connect(host="maxmusau.mysql.pythonanywhere-services.com",user="maxmusau",database="maxmusau$default",password="maxwell1234")
 # Database configuration
-app.config['MYSQL_HOST'] = 'maxmusau.mysql.pythonanywhere-services.com'
-app.config['MYSQL_USER'] = 'maxmusau'
-app.config['MYSQL_PASSWORD'] = 'maxwell1234'
-app.config['MYSQL_DB'] = 'maxmusau$default'
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = ''
+app.config['MYSQL_DB'] = 'biddingsystem'
 
 # Secret key for JWT
 app.config['SECRET_KEY'] = 'LFKSJDWIE($%*$&#@$&#@53498ikdfhnksdjf4i3o)'  # Change this to a strong secret
 
 # Add this line to set the path for the static folder
-STATIC_FOLDER = os.path.join(os.getcwd(), 'static')
+# STATIC_FOLDER = os.path.join(os.getcwd(), 'static')
 
 # Define MEDIA_FOLDER at the top of your app.py
 MEDIA_FOLDER = os.path.join(os.getcwd(), "static")  # Use the static folder for images
@@ -183,16 +183,84 @@ def get_all_items():
             password=app.config['MYSQL_PASSWORD'],
             database=app.config['MYSQL_DB']
         )
-        cur = conn.cursor()
+        cur = conn.cursor(pymysql.cursors.DictCursor)  # Use DictCursor to return dictionaries
         cur.execute("SELECT * FROM items")
-        items = cur.fetchall()
+        items = cur.fetchall()  # This will now return a list of dictionaries
         cur.close()
         conn.close()
         return jsonify(items), 200
     except Exception as e:
         return jsonify({'message': 'Failed to fetch items', 'error': str(e)}), 500
-
 # Add a new item (seller only)
+# @app.route('/add-items', methods=['POST'])
+# def add_item():
+#     try:
+#         # Log form data
+#         print("Form Data:", request.form)
+#         # Log files
+#         print("Files:", request.files)
+
+#         # Get form data
+#         title = request.form.get('title')
+#         description = request.form.get('description')
+#         base_price = request.form.get('base_price')
+#         seller_id = request.form.get('seller_id')
+#         image_file = request.files.get('image')  # Get the uploaded image file
+
+#         # Validate required fields
+#         if not all([title, description, base_price, seller_id]):
+#             return jsonify({'message': 'Missing required fields'}), 400
+
+#         # Generate a unique ID for the item
+#         new_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+
+#         # Save the image file to the MEDIA_FOLDER
+#         if image_file:
+#             image_filename = f"{new_id}_{secure_filename(image_file.filename)}"
+#             image_path = os.path.join(MEDIA_FOLDER, image_filename)
+#             image_file.save(image_path)  # Save the file
+#         else:
+#             image_filename = None  # No image uploaded
+
+#         # Connect to MySQL database
+#         conn = pymysql.connect(
+#             host=app.config['MYSQL_HOST'],
+#             user=app.config['MYSQL_USER'],
+#             password=app.config['MYSQL_PASSWORD'],
+#             database=app.config['MYSQL_DB']
+#         )
+        
+#         cur = conn.cursor()
+
+#         # Insert the new item into the database
+#         cur.execute("""
+#             INSERT INTO items (id, title, description, image, base_price, seller_id, end_time)
+#             VALUES (%s, %s, %s, %s, %s, %s, NOW() + INTERVAL 30 MINUTE)
+#         """, (new_id, title, description, image_filename, base_price, seller_id))
+
+#         conn.commit()
+#         cur.close()
+#         conn.close()
+
+#         return jsonify({'message': 'Item added successfully'}), 201
+
+#     except Exception as e:
+#         print(f"Error occurred: {str(e)}")  # Debugging
+#         return jsonify({'message': 'Failed to add item', 'error': str(e)}), 500
+
+import os
+import random
+import string
+from flask import Flask, request, jsonify
+from werkzeug.utils import secure_filename
+import pymysql
+
+
+
+# Define the static folder for storing images
+STATIC_FOLDER = os.path.join(app.root_path, 'static', 'uploads')
+os.makedirs(STATIC_FOLDER, exist_ok=True)  # Ensure the folder exists
+
 @app.route('/add-items', methods=['POST'])
 def add_item():
     try:
@@ -215,13 +283,12 @@ def add_item():
         # Generate a unique ID for the item
         new_id = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
 
-        # Save the image file to the MEDIA_FOLDER
+        # Save the image file in static/uploads folder
+        image_filename = None  # Default to None in case no image is uploaded
         if image_file:
             image_filename = f"{new_id}_{secure_filename(image_file.filename)}"
-            image_path = os.path.join(MEDIA_FOLDER, image_filename)
-            image_file.save(image_path)  # Save the file
-        else:
-            image_filename = None  # No image uploaded
+            image_path = os.path.join(STATIC_FOLDER, image_filename)
+            image_file.save(image_path)  # Save image to static/uploads
 
         # Connect to MySQL database
         conn = pymysql.connect(
@@ -243,11 +310,12 @@ def add_item():
         cur.close()
         conn.close()
 
-        return jsonify({'message': 'Item added successfully'}), 201
+        return jsonify({'message': 'Item added successfully', 'image_url': f'/static/uploads/{image_filename}'}), 201
 
     except Exception as e:
         print(f"Error occurred: {str(e)}")  # Debugging
         return jsonify({'message': 'Failed to add item', 'error': str(e)}), 500
+
 
 
 
