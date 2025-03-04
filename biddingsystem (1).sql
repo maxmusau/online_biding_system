@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 04, 2025 at 11:46 AM
+-- Generation Time: Mar 04, 2025 at 04:50 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -39,12 +39,7 @@ CREATE TABLE `bidding_table` (
 --
 
 INSERT INTO `bidding_table` (`id`, `item_id`, `start_time`, `status`) VALUES
-(16, '1EDHB', '2025-03-04 06:44:12', 'inactive'),
-(17, '4EGSA', '2025-03-04 06:44:19', 'inactive'),
-(18, '5AUBM', '2025-03-04 06:45:51', 'inactive'),
-(21, 'KI5SH', '2025-03-04 06:49:35', 'inactive'),
-(29, 'P5K6N', '2025-03-04 07:09:11', 'inactive'),
-(32, 'ZROPH', '2025-03-04 10:41:24', 'inactive');
+(33, '1EDHB', '2025-03-04 14:56:10', 'active');
 
 -- --------------------------------------------------------
 
@@ -67,11 +62,7 @@ CREATE TABLE `bids` (
 --
 
 INSERT INTO `bids` (`bid_id`, `item_id`, `item_name`, `seller_id`, `user_id`, `bid_amount`, `timestamp`) VALUES
-(4, 'P5K6N', 'table', '2E4T9', 'FFTFJ', 676767.00, '2025-03-04 10:42:41'),
-(5, 'P5K6N', 'table', '2E4T9', 'FFTFJ', 7878778.00, '2025-03-04 10:58:21'),
-(6, 'ZROPH', 'doll', 'ZXYWM', 'FFTFJ', 78633.00, '2025-03-04 13:42:00'),
-(7, 'ZROPH', 'doll', 'ZXYWM', 'FFTFJ', 42223.00, '2025-03-04 13:42:05'),
-(8, 'ZROPH', 'doll', 'ZXYWM', 'FFTFJ', 9049232.00, '2025-03-04 13:42:12');
+(9, '1EDHB', 'Em ElectroMate Water Dispenser', '2E4T9', 'FFTFJ', 56.00, '2025-03-04 17:57:00');
 
 -- --------------------------------------------------------
 
@@ -94,12 +85,12 @@ CREATE TABLE `items` (
 --
 
 INSERT INTO `items` (`id`, `title`, `description`, `image`, `base_price`, `seller_id`, `end_time`) VALUES
-('1EDHB', 'lenovo', '64gb', '1EDHB_move1.jpg', 17000.00, '2E4T9', '2025-03-03 18:19:41'),
-('4EGSA', 'walldrobe', 'bigger', '4EGSA_catlog.jpg', 3000.00, 'ZXYWM', '2025-03-03 17:38:32'),
-('5AUBM', 'table', '1.5 metres', '5AUBM_house.jpg', 8500.00, '2E4T9', '2025-03-03 18:24:03'),
-('KI5SH', 'laptop', '512gb', 'KI5SH_carou3.jpg', 50000.00, '2E4T9', '2025-03-03 18:18:02'),
-('P5K6N', 'table', 'good table', 'P5K6N_carou4.jpg', 14.99, '2E4T9', '2025-03-03 18:36:55'),
-('ZROPH', 'doll', 'large', 'ZROPH_catlog.jpg', 89.00, 'ZXYWM', '2025-03-03 17:42:57');
+('1EDHB', 'Em ElectroMate Water Dispenser', 'Em ElectroMate Water Dispenser With Hot And Normal Water', 'disp1.jpg', 2.00, '2E4T9', '2025-03-03 18:19:41'),
+('4EGSA', 'Vitron V527 - 2.1 CH Multimedia Speaker', 'Vitron V527 - 2.1 CH Multimedia Speaker, BT/USB/SD/FM - 9000W (1YR WRTY)', 'speaker1.jpg', 3000.00, 'ZXYWM', '2025-03-03 17:38:32'),
+('5AUBM', 'Modern Design Coffee Table', 'Hamilton Modern Design Coffee Table With Storage', 'table1.jpg', 8500.00, '2E4T9', '2025-03-03 18:24:03'),
+('KI5SH', 'HP Refurbished Elitebook 840', 'HP Refurbished Elitebook 840 Core I5, Slim Model , 8GB RAM 500GB HDD -14\", Black', 'laptop1.jpg', 50000.00, '2E4T9', '2025-03-03 18:18:02'),
+('P5K6N', 'Share this product\n\n\n\n1PC YELLOW MASTARD CURTAIN', '1PC YELLOW MASTARD CURTAIN FOR WINDOW (Excludes Sheer) (One Panel Per Item) Length On The Variation X 225cm (Order Two Items For Appearance Similar To The Picture)', 'curtain1.jpg', 14.99, '2E4T9', '2025-03-03 18:36:55'),
+('ZROPH', 'Figures Dolls LED ', 'Figures Dolls LED Colorful Glowing Teddy Bear Stuffed Toy', 'doll1.jpg', 89.00, 'ZXYWM', '2025-03-03 17:42:57');
 
 -- --------------------------------------------------------
 
@@ -200,13 +191,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `bidding_table`
 --
 ALTER TABLE `bidding_table`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=34;
 
 --
 -- AUTO_INCREMENT for table `bids`
 --
 ALTER TABLE `bids`
-  MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `bid_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- Constraints for dumped tables
