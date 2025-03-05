@@ -710,16 +710,10 @@ def add_bid(current_user):
     data = request.get_json()
     
     item_id = data.get('item_id')
-    start_time = data.get('start_time')
-    end_time = data.get('end_time')
 
     # Validate required fields
-    if not item_id or not start_time or not end_time:
-        return jsonify({'message': 'Item ID, start time, and end time are required.'}), 400
-
-    # Validate that end_time is after start_time
-    if start_time >= end_time:
-        return jsonify({'message': 'End time must be after start time.'}), 400
+    if not item_id:
+        return jsonify({'message': 'Item ID is required.'}), 400
 
     try:
         # Connect to MySQL database
@@ -731,11 +725,11 @@ def add_bid(current_user):
         )
         cur = conn.cursor()
 
-        # Insert the new bidding session into the bidding_table
+        # Insert the new bidding session into the bidding_table with current timestamp as start_time and NULL for end_time
         cur.execute("""
             INSERT INTO bidding_table (item_id, start_time, end_time)
-            VALUES (%s, %s, %s)
-        """, (item_id, start_time, end_time))
+            VALUES (%s, NOW(), NULL)
+        """, (item_id,))
 
         conn.commit()
         cur.close()
