@@ -105,7 +105,8 @@ def login():
                         'message': 'Login successful',
                         'token': token,
                         'expires': expiration_time_utc.isoformat(),  # Return the expiry date in UTC
-                        'role': role  # Return the role
+                        'role': role,  # Return the role
+                        'id': user[0]
                     }), 200
                 else:
                     return jsonify({'message': 'Invalid email or password'}), 401
@@ -322,9 +323,44 @@ def add_item():
 # # Place a bid
 
 
+# @app.route('/bid/<item_id>', methods=['POST'])
+# # @token_required  # Ensure the user is authenticated
+# def place_bid(item_id):
+#     data = request.get_json()
+    
+#     try:
+#         # Connect to MySQL database
+#         conn = pymysql.connect(
+#             host=app.config['MYSQL_HOST'],
+#             user=app.config['MYSQL_USER'],
+#             password=app.config['MYSQL_PASSWORD'],
+#             database=app.config['MYSQL_DB']
+#         )
+#         cur = conn.cursor()
+
+#         # Fetch the item details to get the item name and seller_id
+#         cur.execute("SELECT title, seller_id FROM items WHERE id = %s", (item_id,))
+#         item = cur.fetchone()
+
+#         if not item:
+#             return jsonify({'message': 'Item not found'}), 404  # Item does not exist
+
+#         item_name = item[1]  # Assuming title is at index 0
+#         seller_id = item[5]  # Assuming seller_id is at index 1
+
+#         # Insert the bid into the bids table, including user_id
+#         cur.execute("INSERT INTO bids (item_id, item_name, seller_id, user_id, bid_amount, timestamp) VALUES (%s, %s, %s, %s, %s, NOW())",
+#                     (item_id, item_name, seller_id, data['user_id'], data['bid_amount']))  # current_user[0] is the user_id
+        
+#         conn.commit()
+#         cur.close()
+#         conn.close()
+#         return jsonify({'message': 'Bid placed successfully'}), 201
+#     except Exception as e:
+#         return jsonify({'message': 'Failed to place bid', 'error': str(e)}), 500
+
 @app.route('/bid/<item_id>', methods=['POST'])
-@token_required  # Ensure the user is authenticated
-def place_bid(current_user, item_id):
+def place_bid(item_id):
     data = request.get_json()
     
     try:
@@ -344,22 +380,27 @@ def place_bid(current_user, item_id):
         if not item:
             return jsonify({'message': 'Item not found'}), 404  # Item does not exist
 
-        item_name = item[0]  # Assuming title is at index 0
-        seller_id = item[1]  # Assuming seller_id is at index 1
+        item_name = item[0]  # Title is at index 0
+        seller_id = item[1]  # Seller ID is at index 1
 
         # Insert the bid into the bids table, including user_id
-        cur.execute("INSERT INTO bids (item_id, item_name, seller_id, user_id, bid_amount, timestamp) VALUES (%s, %s, %s, %s, %s, NOW())",
-                    (item_id, item_name, seller_id, current_user[0], data['bid_amount']))  # current_user[0] is the user_id
-        
+        cur.execute(
+            "INSERT INTO bids (item_id, item_name, seller_id, user_id, bid_amount, timestamp) "
+            "VALUES (%s, %s, %s, %s, %s, NOW())",
+            (item_id, item_name, seller_id, data['user_id'], data['bid_amount'])
+        )
+
         conn.commit()
         cur.close()
         conn.close()
+
         return jsonify({'message': 'Bid placed successfully'}), 201
     except Exception as e:
         return jsonify({'message': 'Failed to place bid', 'error': str(e)}), 500
 
+
 # Fetch bid history
-@app.route('/bid-history/<item_id>', methods=['GET'])
+@app.route('/fetch-bids/<item_id>', methods=['GET'])
 def get_bid_history(item_id):
     try:
         conn = pymysql.connect(
@@ -369,11 +410,11 @@ def get_bid_history(item_id):
             database=app.config['MYSQL_DB']
         )
         cur = conn.cursor()
-        cur.execute("SELECT * FROM bids WHERE item_id = %s ORDER BY timestamp", (item_id,))
-        bid_history = cur.fetchall()
+        cur.execute("SELECT * FROM bids WHERE item_id = %s ORDER BY bid_amount DESC", (item_id,))
+        bids = cur.fetchall()
         cur.close()
         conn.close()
-        return jsonify(bid_history), 200
+        return jsonify(bids), 200
     except Exception as e:
         return jsonify({'message': 'Failed to fetch bid history', 'error': str(e)}), 500
 
@@ -438,6 +479,81 @@ def add_seller():
         return jsonify({'message': 'Seller added successfully', 'seller_id': seller_id}), 201
     except Exception as e:
         return jsonify({'message': 'Failed to add seller', 'error': str(e)}), 500
+
+# fetch orders
+@app.route('/bids/inactive', methods=['GET'])
+def get_inactive_bids():
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor(pymysql.cursors.DictCursor)  # Fetch results as dictionaries
+        
+        # Fetch all bids with status 'inactive'
+        query = "SELECT * FROM bidding_table WHERE status = %s"
+        cur.execute(query, ('inactive',))
+        inactive_bids = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({"inactive_bids": inactive_bids}), 200
+    except Exception as e:
+        return jsonify({"message": "Failed to fetch inactive bids", "error": str(e)}), 500
+@app.route('/item/<item_id>', methods=['GET'])
+def get_item_details(item_id):
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor(pymysql.cursors.DictCursor)
+        
+        query = "SELECT * FROM items WHERE id = %s"
+        cur.execute(query, (item_id,))
+        item_details = cur.fetchone()
+        
+        cur.close()
+        conn.close()
+
+        if item_details:
+            return jsonify({"item_details": item_details}), 200
+        else:
+            return jsonify({"message": "Item not found"}), 404
+
+    except Exception as e:
+        return jsonify({"message": "Failed to fetch item details", "error": str(e)}), 500
+@app.route('/user/<user_id>', methods=['GET'])
+def get_user_details(user_id):
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor(pymysql.cursors.DictCursor)
+        
+        query = "SELECT username FROM users WHERE id = %s"
+        cur.execute(query, (user_id,))
+        user_details = cur.fetchone()
+        
+        cur.close()
+        conn.close()
+
+        if user_details:
+            return jsonify({"user_details": user_details}), 200
+        else:
+            return jsonify({"message": "User not found"}), 404
+
+    except Exception as e:
+        return jsonify({"message": "Failed to fetch user details", "error": str(e)}), 500
+
 
 # Endpoint to fetch users with role "user"
 @app.route('/users', methods=['GET'])
@@ -533,6 +649,33 @@ def get_items_by_seller(seller_id):
         return jsonify(item_list), 200
     except Exception as e:
         return jsonify({'message': 'Failed to fetch items', 'error': str(e)}), 500
+
+# count bids
+from flask import jsonify
+import pymysql
+
+@app.route('/bids/count/<item_id>', methods=['GET'])
+def get_bid_count(item_id):
+    try:
+        conn = pymysql.connect(
+            host=app.config['MYSQL_HOST'],
+            user=app.config['MYSQL_USER'],
+            password=app.config['MYSQL_PASSWORD'],
+            database=app.config['MYSQL_DB']
+        )
+        cur = conn.cursor()
+        
+        # Query to count the number of bids for the given item_id
+        cur.execute("SELECT COUNT(*) FROM bids WHERE item_id = %s", (item_id,))
+        bid_count = cur.fetchone()[0]  # Fetch the count value
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({'item_id': item_id, 'bid_count': bid_count}), 200
+    except Exception as e:
+        return jsonify({'message': 'Failed to fetch bid count', 'error': str(e)}), 500
+
 
 # Fetch won bids
 @app.route('/won-bids', methods=['GET'])
@@ -653,26 +796,40 @@ def get_item_by_id(item_id):
         return jsonify({'message': 'Failed to fetch item', 'error': str(e)}), 500
 
 # Admin endpoint to update the start and end time for a bid
+# @app.route('/admin/update-bid-time/<item_id>', methods=['PUT'])
+# # # @token_required  # Ensure the user is authenticated
+# def update_bid_time(item_id):
+  
+#     try:
+#         # Connect to MySQL database
+#         conn = pymysql.connect(
+#             host=app.config['MYSQL_HOST'],
+#             user=app.config['MYSQL_USER'],
+#             password=app.config['MYSQL_PASSWORD'],
+#             database=app.config['MYSQL_DB']
+#         )
+#         cur = conn.cursor()
+
+#         # Update the bidding_table with the new start and end times
+#         cur.execute("""
+#             UPDATE bidding_table
+#             SET  status = 'inactive',
+#             WHERE item_id = %s
+                    
+#         """, (item_id))
+#         # print()
+
+#         conn.commit()
+#         cur.close()
+#         conn.close()
+
+#         return jsonify({'message': 'Bid status updated successfully.'}), 200
+
+#     except Exception as e:
+#         return jsonify({'message': 'Failed to update bid times', 'error': str(e)}), 500
+
 @app.route('/admin/update-bid-time/<item_id>', methods=['PUT'])
-@token_required  # Ensure the user is authenticated
-def update_bid_time(current_user, item_id):
-    # Check if the current user is an admin
-    if current_user[4] != 'admin':  # Assuming role is at index 4
-        return jsonify({'message': 'Access denied. Admins only.'}), 403
-
-    data = request.get_json()
-    
-    start_time = data.get('start_time')
-    end_time = data.get('end_time')
-
-    # Validate required fields
-    if not start_time or not end_time:
-        return jsonify({'message': 'Start time and end time are required.'}), 400
-
-    # Validate that end_time is after start_time
-    if start_time >= end_time:
-        return jsonify({'message': 'End time must be after start time.'}), 400
-
+def update_bid_time(item_id):
     try:
         # Connect to MySQL database
         conn = pymysql.connect(
@@ -683,29 +840,31 @@ def update_bid_time(current_user, item_id):
         )
         cur = conn.cursor()
 
-        # Update the bidding_table with the new start and end times
+        # Update the bidding_table, setting status to 'inactive'
         cur.execute("""
             UPDATE bidding_table
-            SET start_time = %s, end_time = %s
+            SET status = %s
             WHERE item_id = %s
-        """, (start_time, end_time, item_id))
+        """, ('inactive', item_id))
 
         conn.commit()
         cur.close()
         conn.close()
 
-        return jsonify({'message': 'Bid times updated successfully.'}), 200
+        return jsonify({'message': 'Bid status updated successfully.'}), 200
 
     except Exception as e:
-        return jsonify({'message': 'Failed to update bid times', 'error': str(e)}), 500
+        return jsonify({'message': 'Failed to update bid status', 'error': str(e)}), 500
+
+
 
 # Admin endpoint to add a bidding session for an item
-@app.route('/admin/add-bid', methods=['POST'])
-@token_required  # Ensure the user is authenticated
-def add_bid(current_user):
+@app.route('/admin/add-bid/<item_id>', methods=['POST'])
+# @token_required  # Ensure the user is authenticated
+def add_bid(item_id):
     # Check if the current user is an admin
-    if current_user[4] != 'admin':  # Assuming role is at index 4
-        return jsonify({'message': 'Access denied. Admins only.'}), 403
+    # if current_user[4] != 'admin':  # Assuming role is at index 4
+    #     return jsonify({'message': 'Access denied. Admins only.'}), 403
 
     data = request.get_json()
     
@@ -728,8 +887,8 @@ def add_bid(current_user):
         # Insert the new bidding session into the bidding_table with current timestamp as start_time and NULL for end_time
         cur.execute("""
             INSERT INTO bidding_table (item_id, start_time, end_time)
-            VALUES (%s, NOW(), NULL)
-        """, (item_id,))
+            VALUES (%s, %s, %s)
+        """, (item_id, start_time, end_time))
 
         conn.commit()
         cur.close()
@@ -740,6 +899,7 @@ def add_bid(current_user):
     except Exception as e:
         return jsonify({'message': 'Failed to add bidding session', 'error': str(e)}), 500
 
+        # return jsonify({'message': 'Failed to add bidding session', 'error': str(e)}), 500
 # Endpoint to fetch bidding session details based on item_id
 @app.route('/bidding/<item_id>', methods=['GET'])
 def get_bidding_details(item_id):
